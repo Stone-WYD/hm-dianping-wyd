@@ -1,5 +1,7 @@
 HELP.md
 target/
+error.log
+nginx.pid
 !.mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
 !**/src/test/**/target/
