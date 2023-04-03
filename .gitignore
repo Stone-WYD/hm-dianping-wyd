@@ -1,7 +1,5 @@
 HELP.md
 target/
-error.log
-nginx.pid
 !.mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
 !**/src/test/**/target/
@@ -14,6 +12,8 @@ nginx.pid
 .settings
 .springBeans
 .sts4-cache
+.log
+.pid
 
 ### IntelliJ IDEA ###
 .idea
