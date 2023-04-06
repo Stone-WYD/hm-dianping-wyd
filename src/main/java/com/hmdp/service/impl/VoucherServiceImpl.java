@@ -27,6 +27,8 @@ public class VoucherServiceImpl extends ServiceImpl<VoucherMapper, Voucher> impl
     @Resource
     private ISeckillVoucherService seckillVoucherService;
 
+    private Integer testId;
+
     @Override
     public Result queryVoucherOfShop(Long shopId) {
         // 查询优惠券信息
@@ -47,5 +49,19 @@ public class VoucherServiceImpl extends ServiceImpl<VoucherMapper, Voucher> impl
         seckillVoucher.setBeginTime(voucher.getBeginTime());
         seckillVoucher.setEndTime(voucher.getEndTime());
         seckillVoucherService.save(seckillVoucher);
+    }
+
+    @Override
+    public Result testWyd(Integer id) {
+        testId = id;
+        try {
+            Thread.sleep(5000);
+        } catch (InterruptedException e) {
+            return Result.fail("被打断了");
+        }
+        if (testId != id){
+            log.debug("testWyd执行过程中，testId被其他线程修改了！");
+        }
+        return Result.ok(testId);
     }
 }
