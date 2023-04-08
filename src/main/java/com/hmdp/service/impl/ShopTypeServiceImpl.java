@@ -35,30 +35,21 @@ public class ShopTypeServiceImpl extends ServiceImpl<ShopTypeMapper, ShopType> i
     public Result queryTypeList() {
         List<ShopType> resultList;
         // 1 查询缓存
-        // 1.1 查询list的大小
-        String listSize = stringRedisTemplate.opsForValue().get(SHOP_TYPE_LIST_SIZE_KEY);
-        if (listSize!=null && StrUtil.isNotBlank(listSize)) {
-            // 1.2 查询list
-            List<String> shopTypeList = stringRedisTemplate.opsForList().range(SHOP_TYPE_LIST_KEY, 0, Long.parseLong(listSize));
-            if (shopTypeList!=null && shopTypeList.size() > 0) {
-                // 1.3 缓存命中 list元素类型转换
-                resultList = shopTypeList.stream().
-                        map( shopString -> JSONUtil.toBean(shopString, ShopType.class))
-                        .collect(Collectors.toList());
-                return Result.ok(resultList);
-            }
+        List<String> shopTypeList = stringRedisTemplate.opsForList().range(SHOP_TYPE_LIST_KEY, 0, SHOP_TYPE_LIST_SIZE_KEY);
+        if (shopTypeList != null && shopTypeList.size() > 0) {
+            // 缓存命中 list元素类型转换
+            resultList = shopTypeList.stream().
+                    map(shopString -> JSONUtil.toBean(shopString, ShopType.class))
+                    .collect(Collectors.toList());
+            return Result.ok(resultList);
         }
-
         // 2. 缓存没有命中，查询数据库
         resultList = query().orderByAsc("sort").list();
-
         // 3. 数据库没有查到数据
         if (resultList.size() <= 0) {
-            return Result.fail("未能查询到类型数据！");
+            return Result.fail("未能查询到数据！");
         }
         // 4. 返回数据转换类型，存入redis
-        // 存入size
-        stringRedisTemplate.opsForValue().set(SHOP_TYPE_LIST_SIZE_KEY, String.valueOf(resultList.size()));
         // 存入list
         stringRedisTemplate.opsForList().rightPushAll(SHOP_TYPE_LIST_KEY,
                 resultList.stream().map(JSONUtil::toJsonStr).collect(Collectors.toList()));

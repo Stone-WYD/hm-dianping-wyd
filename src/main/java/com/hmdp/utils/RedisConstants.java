@@ -22,5 +22,5 @@ public class RedisConstants {
 
     // shop type list
     public static final String SHOP_TYPE_LIST_KEY = "shoptype:list";
-    public static final String SHOP_TYPE_LIST_SIZE_KEY = "shoptype:list:size";
+    public static final Long SHOP_TYPE_LIST_SIZE_KEY = 10L;
 }
