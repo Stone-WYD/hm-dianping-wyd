@@ -31,4 +31,9 @@ git checkout init
 1. 生成验证码，验证码存入 redis 中，其中 key 是电话号码，value 是验证码
 2. 登录时校验验证码，因为登录时需要传入电话号码，所以可以很容易从 redis 中取出验证码来进行校验。校验通过后保存用户信息时，保存到数据库的操作和使用 session 一样，但是保存到 redis 中时，需要生成一个 token 作为 key，并且将 key 返回给客户端
 3. 同上3，但是客户端存储了 token 后，通过 token 获取用户信息，此处使用 token 的原因是不会泄露用户信息。
+4. 注意问题： Spring 默认注入的 RedisTemplate 是 StringRedisTemplate，进行 hash 操作时，要求放入其中的 key 全是 String，那么在使用工具将 bean 转化为 map 时，需要进行一些额外的将 字段类型转化为 String 的操作。
+5. 使用 redis 代替 session 需要考虑的问题：
+   - 选择合适的数据结构
+   - 选择合适的key
+   - 选择合适的存储粒度（敏感信息不要返回给前端）
 
