@@ -24,7 +24,11 @@ public class MvcConfig implements WebMvcConfigurer {
                         "/upload/**",
                         "/voucher/**",
                         "/user/code",
-                        "/user/login").order(1);
+                        "/user/login",
+                        "/webjars/**",
+                        "/swagger-resources",
+                        "/favicon.ico",
+                        "/doc.html").order(1);
         // token 拦截器
         registry.addInterceptor(new RefreshTokenInterceptor(stringRedisTemplate))
                 .addPathPatterns("/**").order(0);
