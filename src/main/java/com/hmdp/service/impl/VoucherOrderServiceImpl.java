@@ -1,20 +1,23 @@
 package com.hmdp.service.impl;
 
+import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.hmdp.dto.Result;
 import com.hmdp.entity.SeckillVoucher;
 import com.hmdp.entity.VoucherOrder;
 import com.hmdp.mapper.VoucherOrderMapper;
 import com.hmdp.service.ISeckillVoucherService;
 import com.hmdp.service.IVoucherOrderService;
-import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
-import com.hmdp.service.IVoucherService;
-import com.hmdp.utils.*;
-import org.springframework.data.redis.core.StringRedisTemplate;
+import com.hmdp.utils.RedisIdWorker;
+import com.hmdp.utils.SpringUtil;
+import com.hmdp.utils.UserHolder;
+import org.redisson.api.RLock;
+import org.redisson.api.RedissonClient;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import javax.annotation.Resource;
 import java.time.LocalDateTime;
+import java.util.concurrent.TimeUnit;
 
 /**
  * <p>
@@ -31,13 +34,13 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
     private ISeckillVoucherService seckillVoucherService;
 
     @Resource
-    private StringRedisTemplate stringRedisTemplate;
-
-    @Resource
     private RedisIdWorker redisIdWorder;
 
+    @Resource
+    private RedissonClient redissonClient;
+
     @Override
-    public Result seckillVocher(Long voucherId) {
+    public Result seckillVocher(Long voucherId) throws InterruptedException {
         // 1. 查询优惠券信息
         SeckillVoucher seckillVoucher = seckillVoucherService.getById(voucherId);
         // 2. 查询优惠券是否过期或者未到时间
@@ -53,8 +56,11 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
         }
         // 分布式锁
         Long userId = UserHolder.getUser().getId();
-        ILock lock = new SimpleRedisLock("order:" + userId, stringRedisTemplate);
-        boolean isLock = lock.tryLock(1200);
+
+        // ILock lock = new SimpleRedisLock("order:" + userId, stringRedisTemplate);
+        RLock lock = redissonClient.getLock("lock:order:" + userId);
+
+        boolean isLock = lock.tryLock(1, 10, TimeUnit.SECONDS);
         if (!isLock) {
             return Result.fail("不允许重复下单！");
         }
