@@ -4,10 +4,13 @@ import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.fasterxml.jackson.annotation.JsonFormat;
+import com.hmdp.utils.MyDateAnno;
 import io.swagger.annotations.ApiModelProperty;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.experimental.Accessors;
+import org.springframework.format.annotation.DateTimeFormat;
 
 import java.io.Serializable;
 import java.time.LocalDateTime;
@@ -93,28 +96,40 @@ public class Voucher implements Serializable {
     /**
      * 生效时间
      */
+    // @MyDateAnno("yyyy-MM-dd HH:mm:ss") 参数在请求头中时使用
+    // @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     @ApiModelProperty(notes = "生效时间", name = "beginTime")
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     @TableField(exist = false)
     private LocalDateTime beginTime;
 
     /**
      * 失效时间
      */
+    // @MyDateAnno("yyyy-MM-dd HH:mm:ss") 参数在请求头中时使用
+    // @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     @ApiModelProperty(notes = "失效时间", name = "endTime")
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     @TableField(exist = false)
     private LocalDateTime endTime;
 
     /**
      * 创建时间
      */
+    // @MyDateAnno("yyyy-MM-dd HH:mm:ss") 参数在请求头中时使用
+    // @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     @ApiModelProperty(notes = "创建时间", name = "createTime")
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime createTime;
 
 
     /**
      * 更新时间
      */
+    // @MyDateAnno("yyyy-MM-dd HH:mm:ss") 参数在请求头中时使用
+    // @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     @ApiModelProperty(notes = "更新时间", name = "updateTime")
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime updateTime;
 
 
