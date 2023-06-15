@@ -12,11 +12,15 @@ import com.hmdp.utils.SpringUtil;
 import com.hmdp.utils.UserHolder;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
+import org.springframework.core.io.ClassPathResource;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import javax.annotation.Resource;
 import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -30,16 +34,40 @@ import java.util.concurrent.TimeUnit;
 @Service
 public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, VoucherOrder> implements IVoucherOrderService {
 
+    private final static DefaultRedisScript<Long> SECKILL_SCRIPT;
+    static {
+        SECKILL_SCRIPT = new DefaultRedisScript<>();
+        SECKILL_SCRIPT.setLocation(new ClassPathResource("seckill.lua"));
+        SECKILL_SCRIPT.setResultType(Long.class);
+    }
+
     @Resource
     private ISeckillVoucherService seckillVoucherService;
-
     @Resource
     private RedisIdWorker redisIdWorder;
-
     @Resource
     private RedissonClient redissonClient;
+    @Resource
+    private StringRedisTemplate stringRedisTemplate;
 
     @Override
+    public Result seckillVocher(Long voucherId) throws InterruptedException {
+        // 获取用户
+        Long userId = UserHolder.getUser().getId();
+        long orderId = redisIdWorder.nextId("order");
+        // 执行lua脚本
+        Long result = stringRedisTemplate.execute(SECKILL_SCRIPT, Collections.emptyList(),
+                voucherId.toString(), userId.toString(), String.valueOf(orderId));
+        int r = result.intValue();
+        if (r != 0) {
+            return Result.fail( r==1 ? "库存不足" : "不能重复下单");
+        }
+        // TODO: 2023/6/15 保存阻塞队列
+        // 返回订单id
+        return Result.ok(orderId);
+    }
+
+    /* @Override // 未使用redis进行业务流程上的优化
     public Result seckillVocher(Long voucherId) throws InterruptedException {
         // 1. 查询优惠券信息
         SeckillVoucher seckillVoucher = seckillVoucherService.getById(voucherId);
@@ -71,7 +99,7 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
         }
         // 单机处理
         // return SpringUtil.getBean(VoucherOrderServiceImpl.class).createVoucherOrder(voucherId);
-    }
+    }*/
 
     @Transactional
     public Result createVoucherOrder(Long voucherId){
@@ -132,4 +160,6 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
         save(voucherOrder);
         return Result.ok(orderId);
     }
+
+
 }

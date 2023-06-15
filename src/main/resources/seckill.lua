@@ -10,7 +10,7 @@ local orderId = ARG[3]
 -- 2.1.库存key
 local stockKey = 'seckill:stock:' .. voucherId
 -- 2.2 订单key
-local orderKey = 'seckill:order:' .. orderId
+local orderKey = 'seckill:order:' .. voucherId
 
 -- 3.脚本业务
 -- 3.1.判断库存是否充足
