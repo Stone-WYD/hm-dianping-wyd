@@ -10,6 +10,7 @@ import com.hmdp.service.IVoucherOrderService;
 import com.hmdp.utils.RedisIdWorker;
 import com.hmdp.utils.SpringUtil;
 import com.hmdp.utils.UserHolder;
+import lombok.extern.slf4j.Slf4j;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
 import org.springframework.core.io.ClassPathResource;
@@ -18,10 +19,11 @@ import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import javax.annotation.PostConstruct;
 import javax.annotation.Resource;
 import java.time.LocalDateTime;
 import java.util.Collections;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 
 /**
  * <p>
@@ -32,6 +34,7 @@ import java.util.concurrent.TimeUnit;
  * @since 2021-12-22
  */
 @Service
+@Slf4j
 public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, VoucherOrder> implements IVoucherOrderService {
 
     private final static DefaultRedisScript<Long> SECKILL_SCRIPT;
@@ -50,6 +53,74 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
     @Resource
     private StringRedisTemplate stringRedisTemplate;
 
+    private static final ExecutorService seckill_order_executor = Executors.newSingleThreadExecutor();
+
+    @PostConstruct
+    private void  init(){
+        seckill_order_executor.submit(new VoucherOrderHandler());
+    }
+
+    private BlockingQueue<VoucherOrder> ordersTask = new ArrayBlockingQueue<>(1024 * 1024);
+
+    private class VoucherOrderHandler implements Runnable{
+
+        @Override
+        public void run() {
+
+            while (true){
+                // 获取队列中的订单信息
+                VoucherOrder voucherOrder = null;
+                try {
+                    voucherOrder = ordersTask.take();
+                } catch (InterruptedException e) {
+                    log.error("从阻塞队列中获取订单信息失败！");
+                }
+                // 创建订单
+                handlerVoucherOrder(voucherOrder);
+            }
+        }
+
+        private void handlerVoucherOrder(VoucherOrder voucherOrder) {
+            // 获取用户
+            Long userId = voucherOrder.getUserId();
+            // 创建锁对象
+            RLock lock = redissonClient.getLock("lock:order+" + userId);
+            // 获取锁
+            boolean isLock = lock.tryLock();
+            // 判断获取锁是否成功
+            if (!isLock){
+                // 获取锁失败 理论上不会出现这种情况
+                log.error("线程池获取创建订单任务报错：不允许重复下单");
+                return;
+            }
+            SpringUtil.getBean(VoucherOrderServiceImpl.class).createVoucherOrder3(voucherOrder);
+        }
+    }
+
+    @Transactional
+    public void createVoucherOrder3(VoucherOrder voucherOrder) {
+        // 这里其实没必要加这么多判断然后 return 空这么写，因为Redis已经判断过了。而如果redis真的出了问题，其实是需要手动地去修复问题的。
+        Long userId = voucherOrder.getUserId();
+        int count = query().eq("user_id", userId).eq("voucher_id", voucherOrder.getVoucherId()).count();
+        if (count > 0) {
+            log.error("用户已经购买过一次了！");
+            return;
+        }
+
+        // 扣减库存
+        boolean update = seckillVoucherService.update().setSql("stock = stock - 1").eq("voucher_id", voucherOrder.getVoucherId())
+                .gt("stock", 0).update();
+
+        if (!update) {
+            // 扣减失败
+            log.error("库存不足！");
+            return;
+        }
+        // 创建订单
+        save(voucherOrder);
+    }
+
+
     @Override
     public Result seckillVocher(Long voucherId) throws InterruptedException {
         // 获取用户
@@ -63,6 +134,11 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
             return Result.fail( r==1 ? "库存不足" : "不能重复下单");
         }
         // TODO: 2023/6/15 保存阻塞队列
+        VoucherOrder voucherOrder = new VoucherOrder();
+        voucherOrder.setVoucherId(voucherId);
+        voucherOrder.setUserId(userId);
+        voucherOrder.setId(orderId);
+        ordersTask.add(voucherOrder);
         // 返回订单id
         return Result.ok(orderId);
     }
