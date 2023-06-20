@@ -1,18 +1,22 @@
 package com.hmdp.utils;
 
+import cn.hutool.core.util.StrUtil;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.web.servlet.HandlerInterceptor;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import java.util.Map;
+
+import static com.hmdp.utils.RedisConstants.LOGIN_USER_KEY;
 
 public class LoginInterceptor implements HandlerInterceptor {
 
-    /*
-    private StringRedisTemplate stringRedisTemplate;
+    private final StringRedisTemplate stringRedisTemplate;
 
     public LoginInterceptor(StringRedisTemplate stringRedisTemplate) {
         this.stringRedisTemplate = stringRedisTemplate;
-    }*/
+    }
 
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler){
@@ -71,12 +75,23 @@ public class LoginInterceptor implements HandlerInterceptor {
         return true;*/
 
         // 1. 判断是否需要拦截（ThreadLocal 中是否能取出用户）
-        if (UserHolder.getUser() == null) {
+        /*if (UserHolder.getUser() == null) {
             // 没有，需要拦截
             response.setStatus(401);
             return false;
+        }*/
+
+        // 1. 获取请求头中的 token
+        String token = request.getHeader("authorization");
+        if (StrUtil.isBlank(token)) {
+            // 2. 不存在，拦截
+            response.setStatus(401);
+            return false;
         }
-        return true;
+        String key = LOGIN_USER_KEY + token;
+        // 3.基于 token 获取 redis 中的用户
+        Map<Object, Object> userMap = stringRedisTemplate.opsForHash().entries(key);
+        return !userMap.isEmpty();
 
     }
 

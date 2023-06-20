@@ -16,10 +16,11 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
+import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpSession;
-
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
@@ -105,6 +106,16 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         // 返回 token
         // return Result.ok();
         return Result.ok(token);
+    }
+
+    @Override
+    public Result logout(HttpServletRequest request) {
+        String token = request.getHeader("authorization");
+        String key = LOGIN_USER_KEY + token;
+        Set<Object> keys = stringRedisTemplate.opsForHash().keys(key);
+        Object[] array = keys.toArray(new Object[0]);
+        stringRedisTemplate.opsForHash().delete(key, array);
+        return Result.ok();
     }
 
     private User createUserWithPhone(String phone) {

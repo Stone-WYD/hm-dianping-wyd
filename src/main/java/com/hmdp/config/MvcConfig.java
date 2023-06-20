@@ -19,7 +19,8 @@ public class MvcConfig implements WebMvcConfigurer {
 
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
-        registry.addInterceptor(new LoginInterceptor())
+
+        registry.addInterceptor(new LoginInterceptor(stringRedisTemplate))
                 .excludePathPatterns(
                         "/shop/**",
                         "/shop-type/**",
@@ -31,7 +32,7 @@ public class MvcConfig implements WebMvcConfigurer {
                         "/swagger-resources",
                         "/favicon.ico",
                         "/doc.html").order(1);
-        // token 拦截器
+        // token 刷新拦截器
         registry.addInterceptor(new RefreshTokenInterceptor(stringRedisTemplate))
                 .addPathPatterns("/**").order(0);
 
