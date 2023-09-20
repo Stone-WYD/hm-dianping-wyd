@@ -41,7 +41,7 @@ public class UserController {
      */
     @PostMapping("code")
     public Result sendCode(@RequestParam("phone") String phone, HttpSession session) {
-        // TODO 发送短信验证码并保存验证码
+        // 发送短信验证码并保存验证码
         return userService.sendCode(phone, session);
     }
 
@@ -51,7 +51,7 @@ public class UserController {
      */
     @PostMapping("/login")
     public Result login(@RequestBody LoginFormDTO loginForm, HttpSession session){
-        // TODO 实现登录功能
+        // 实现登录功能
         return userService.login(loginForm, session);
     }
 
@@ -61,13 +61,13 @@ public class UserController {
      */
     @PostMapping("/logout")
     public Result logout(HttpServletRequest request){
-        // TODO 实现登出功能
+        // 实现登出功能
         return userService.logout(request);
     }
 
     @GetMapping("/me")
     public Result me(){
-        // TODO 获取当前登录的用户并返回
+        // 获取当前登录的用户并返回
         UserDTO user = UserHolder.getUser();
         return Result.ok(user);
     }
@@ -96,5 +96,15 @@ public class UserController {
         UserDTO userDTO = BeanUtil.copyProperties(user, UserDTO.class);
         // 返回
         return Result.ok(userDTO);
+    }
+
+    @PostMapping("/sign")
+    public Result sign(){
+        return userService.sign();
+    }
+
+    @GetMapping("/sign/count")
+    public Result signCount(){
+        return userService.signCount();
     }
 }

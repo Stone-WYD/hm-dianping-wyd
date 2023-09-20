@@ -2,6 +2,7 @@ package com.hmdp.service.impl;
 
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.bean.copier.CopyOptions;
+import cn.hutool.core.collection.CollectionUtil;
 import cn.hutool.core.util.RandomUtil;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.hmdp.dto.LoginFormDTO;
@@ -11,17 +12,18 @@ import com.hmdp.entity.User;
 import com.hmdp.mapper.UserMapper;
 import com.hmdp.service.IUserService;
 import com.hmdp.utils.RegexUtils;
+import com.hmdp.utils.UserHolder;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.connection.BitFieldSubCommands;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpSession;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 import static com.hmdp.utils.RedisConstants.*;
@@ -116,6 +118,58 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         Object[] array = keys.toArray(new Object[0]);
         stringRedisTemplate.opsForHash().delete(key, array);
         return Result.ok();
+    }
+
+    @Override
+    public Result sign() {
+        // 获取 key
+        String key = getUserSignKey();
+        // 获取天数
+        int dayOfMonth = LocalDateTime.now().getDayOfMonth();
+        // 存入 redis
+        stringRedisTemplate.opsForValue().setBit(key, dayOfMonth - 1, true);
+        return Result.ok();
+    }
+
+    @Override
+    public Result signCount() {
+        // 获取 key
+        String key = getUserSignKey();
+        // 获取天数
+        int dayOfMonth = LocalDateTime.now().getDayOfMonth();
+        // 从 redis 获取签到数据
+        List<Long> resultFromRedis = stringRedisTemplate.opsForValue().bitField(key,
+                BitFieldSubCommands.create().
+                        get(BitFieldSubCommands.BitFieldType.unsigned(dayOfMonth)).valueAt(0));
+        // 空校验
+        if (CollectionUtil.isEmpty(resultFromRedis)) {
+            return Result.ok(0);
+        }
+        Long num = resultFromRedis.get(0);
+        if (num == null || num == 0) {
+            return Result.ok(0);
+        }
+        // 遍历计算连续天数
+        int count = 0;
+        while (true) {
+            if ((num & 1) == 0) {
+                break;
+            } else {
+                count++;
+                num >>>= 1;
+            }
+        }
+        return Result.ok(count);
+    }
+
+    private String getUserSignKey() {
+        // 获取用户信息
+        Long userId = UserHolder.getUser().getId();
+        // 获取日期
+        LocalDateTime now = LocalDateTime.now();
+        // 得到 key
+        String yearAndMonth = ":" + now.format(DateTimeFormatter.ofPattern("yyyyMM"));
+        return USER_SIGN_KEY + userId + yearAndMonth;
     }
 
     private User createUserWithPhone(String phone) {
